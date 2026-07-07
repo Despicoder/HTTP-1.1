@@ -122,15 +122,15 @@ which design decisions are load-bearing and which are just style.
 
 ```
                      ┌─────────────────────────────────────┐
-                     │           epoll event loop            │
-                     │            (main thread)              │
-                     │                                        │
-   new connection ──▶│  accept4() in a loop until EAGAIN      │
-                     │  → set EPOLLONESHOT, add to epoll      │
-                     │                                        │
-   fd readable    ──▶│  events[i].data.ptr = connection_t*    │
-                     │  → mark in_flight, push to task queue  │
-                     └───────────────┬───────────────────────┘
+                     │           epoll event loop          │
+                     │            (main thread)            │
+                     │                                     │
+   new connection ──>│  accept4() in a loop until EAGAIN   |
+                     │  → set EPOLLONESHOT, add to epoll   │
+                     │                                     │
+   fd readable    ──>│  events[i].data.ptr = connection_t* │
+                     │  → mark in_flight,push to task queue│
+                     └───────────────┬─────────────────────┘
                                      │
                           bounded task queue (mutex + condvars)
                                      │
