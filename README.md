@@ -23,10 +23,10 @@ A multithreaded HTTP/1.1 static file server written from scratch in C, using raw
                      │           epoll event loop          │
                      │            (main thread)            │
                      │                                     │
-  new connection ──▶│  accept4() in a loop until EAGAIN    │
+   new connection ──>│  accept4() in a loop until EAGAIN   |
                      │  → set EPOLLONESHOT, add to epoll   │
                      │                                     │
-  fd readable    ──▶│  events[i].data.ptr = connection_t*  │
+   fd readable    ──>│  events[i].data.ptr = connection_t* │
                      │  → mark in_flight,push to task queue│
                      └───────────────┬─────────────────────┘
                                      │
