@@ -336,28 +336,34 @@ static void *sweeper_thread_fn(void *arg) {
         if (g_shutdown) break;
 
         time_t now = time(NULL);
+        connection_t **to_close = NULL;
+        int n = 0, cap = 0;
 
         pthread_mutex_lock(&server->conn_lock);
         connection_t *c = server->conn_head;
         while (c) {
             connection_t *next = c->next;
-            /* Never touch a connection currently owned by a worker thread --
-             * it may be mid-read/mid-write and closing it out from under
-             * the worker would be a use-after-free. */
             if (!c->in_flight && (now - c->last_active) > server->timeout_seconds) {
-                /* Unlink first so close_connection()'s own locking doesn't
-                 * deadlock against the lock we're already holding. */
                 if (c->prev) c->prev->next = c->next;
                 if (c->next) c->next->prev = c->prev;
                 if (server->conn_head == c) server->conn_head = c->next;
 
-                epoll_ctl(server->epoll_fd, EPOLL_CTL_DEL, c->fd, NULL);
-                close(c->fd);
-                connection_free(c);
+                if (n == cap) {
+                    cap = cap ? cap * 2 : 16;
+                    to_close = realloc(to_close, cap * sizeof(*to_close));
+                }
+                to_close[n++] = c;
             }
             c = next;
         }
         pthread_mutex_unlock(&server->conn_lock);
+
+        for (int i = 0; i < n; i++) {
+            epoll_ctl(server->epoll_fd, EPOLL_CTL_DEL, to_close[i]->fd, NULL);
+            close(to_close[i]->fd);
+            connection_free(to_close[i]);
+        }
+        free(to_close);
     }
 
     return NULL;
